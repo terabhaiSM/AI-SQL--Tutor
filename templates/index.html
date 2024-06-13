@@ -1,0 +1,92 @@
+{% extends "base.html" %} 
+{% block content %}
+<h1 class="text-center">SQL Learning Tool</h1>
+<div class="text-center mb-4">
+  <a href="{{ url_for('download_db') }}" class="btn btn-primary">Download SQLite Database</a>
+  <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
+</div>
+<div id="question-container" class="mb-4">
+  <h3>Question:</h3>
+  <p id="question-text"></p>
+</div>
+<div id="sql-input-container" class="form-group">
+  <label for="sql-input">Write your SQL query:</label>
+  <textarea id="sql-input" class="form-control" rows="5"></textarea>
+  <input type="hidden" id="questions-json" value="{{ questions_json }}" />
+</div>
+<button id="submit-query" class="btn btn-success">Submit</button>
+<button id="next-question" class="btn btn-primary">Next Question</button>
+<div id="feedback-container" class="mt-4">
+  <h4>Feedback:</h4>
+  <div id="feedback-text" class="text-break"></div>
+</div>
+
+<div id="overall-feedback-container" class="mt-4 d-none">
+  <h4>Overall Feedback:</h4>
+  <div id="overall-feedback-text" class="text-break"></div>
+  <h4>All Question Feedbacks:</h4>
+  <div id="all-feedbacks-text" class="text-break"></div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", (event) => {
+      const questionsJsonString = document.getElementById("questions-json").value;
+      const quizQuestions = JSON.parse(questionsJsonString);
+  
+      let currentQuestionIndex = 0;
+      let allFeedbacks = [];
+  
+      function loadQuestion(index) {
+        const question = quizQuestions[index];
+        document.getElementById("question-text").textContent = question.text;
+      }
+  
+      loadQuestion(currentQuestionIndex);
+  
+      document.getElementById("submit-query").addEventListener("click", async () => {
+        const query = document.getElementById("sql-input").value;
+        const questionId = quizQuestions[currentQuestionIndex].id;
+  
+        const response = await fetch('{{ url_for("submit_query") }}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ question: quizQuestions[currentQuestionIndex].text, query: query })
+        });
+        const data = await response.json();
+        document.getElementById('feedback-text').innerHTML = data.feedback;
+        allFeedbacks.push(data.feedback);
+      });
+  
+      document.getElementById("next-question").addEventListener("click", async () => {
+        currentQuestionIndex++;
+        document.getElementById("sql-input").value = ""; 
+        if (currentQuestionIndex < quizQuestions.length) {
+          loadQuestion(currentQuestionIndex);
+        } else {
+          // Hide question, input fields, and feedback container
+          document.getElementById("question-container").classList.add("d-none");
+          document.getElementById("sql-input-container").classList.add("d-none");
+          document.getElementById("submit-query").classList.add("d-none");
+          document.getElementById("next-question").classList.add("d-none");
+          document.getElementById("feedback-container").classList.add("d-none");
+
+          // Display overall feedback
+          document.getElementById("overall-feedback-container").classList.remove("d-none");
+
+          const overallFeedbackResponse = await fetch('{{ url_for("generate_overall_feedback") }}', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ feedbacks: allFeedbacks })
+          });
+          const overallFeedbackData = await overallFeedbackResponse.json();
+          document.getElementById('overall-feedback-text').innerHTML = overallFeedbackData.overall_feedback;
+          document.getElementById('all-feedbacks-text').innerHTML = allFeedbacks.join("<br><br>");
+        }
+      });
+    });
+</script>  
+{% endblock %}

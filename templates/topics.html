@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Learning Tool</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center">SQL Learning Tool</h1>
+        <div class="form-group">
+            <label for="topic-select">Choose a Topic:</label>
+            <select id="topic-select" class="form-control">
+                <option value="" disabled selected>Select a topic</option>
+            </select>
+        </div>
+        <div class="text-center mt-4">
+            <button id="start-quiz" class="btn btn-primary">Start Quiz</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            fetch('questions.json')
+                .then(response => response.json())
+                .then(data => {
+                    const topicSelect = document.getElementById("topic-select");
+
+                    // Populate the topic dropdown
+                    data.topics.forEach((topic, index) => {
+                        const option = document.createElement("option");
+                        option.value = index;
+                        option.textContent = topic.name;
+                        topicSelect.appendChild(option);
+                    });
+
+                    // Event listener for Start Quiz button
+                    document.getElementById("start-quiz").addEventListener("click", () => {
+                        const selectedTopicIndex = topicSelect.value;
+                        if (selectedTopicIndex === "") {
+                            alert("Please select a topic.");
+                            return;
+                        }
+                        const selectedTopic = data.topics[selectedTopicIndex];
+
+                        // Store selected topic questions in localStorage
+                        localStorage.setItem("selectedTopicQuestions", JSON.stringify(selectedTopic.questions));
+
+                        // Redirect to index.html
+                        window.location.href = "index.html";
+                    });
+                })
+                .catch(error => console.error('Error loading questions.json:', error));
+        });
+    </script>
+</body>
+</html>

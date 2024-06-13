@@ -1,0 +1,32 @@
+[
+    {
+        "id": 1,
+        "text": "Give the names of employees who are working in the 'Sales' department.",
+        "topic": "Basics"
+    },
+    {
+        "id": 2,
+        "text": "Give the names of employees who are not working in the 'Sales' department.",
+        "topic": "Basics"
+    },
+    {
+        "id": 3,
+        "text": "Give the names of employees who are not working in any department.",
+        "topic": "Basics"
+    },
+    {
+        "id": 4,
+        "text": "Retrieve the total sales amount made by each employee.",
+        "topic": "Aggregation"
+    },
+    {
+        "id": 5,
+        "text": "List the names of departments along with the number of employees working in each department.",
+        "topic": "Join"
+    },
+    {
+        "id": 6,
+        "text": "List the names of top 3 departments with the highest paid individual employee.",
+        "topic": "Advanced"
+    }
+]
