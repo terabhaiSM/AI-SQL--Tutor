@@ -1,22 +1,28 @@
-from flask import Flask, render_template, redirect, url_for, request, flash, send_file, jsonify
+from flask import Flask, render_template, redirect, url_for, request, flash, send_file, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, login_user, current_user, logout_user, login_required
 import sqlite3
 import json
 import requests
-from models import db, bcrypt, login_manager, User, Answer
+from models import db, bcrypt, login_manager, User, Answer, Workspace, WorkspaceDetails
 from assess import create_system_prompt, assess_query
 import openai
+from localStoragePy import localStoragePy
+from flask_migrate import Migrate
+from workspace_routes import workspace_bp
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'd1056c7caffd817f811eb140761c7a50'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://test_rybf_user:sv03qDGkwfnxR3gJMHzXeIwAJAQx72v1@dpg-cpkiq7a0si5c73crc8m0-a.singapore-postgres.render.com/test_rybf'
-
+migrate = Migrate()
 db.init_app(app)
 bcrypt.init_app(app)
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+migrate.init_app(app, db)
+
+app.register_blueprint(workspace_bp, url_prefix='/workspace')
 
 def load_questions_from_json(file_path):
     with open(file_path, 'r') as file:
@@ -30,14 +36,14 @@ def home():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('initial_assessment'))
+        return redirect(url_for('topics'))
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
         user = User.query.filter_by(username=username).first()
         if user and user.check_password(password):
             login_user(user)
-            return redirect(url_for('initial_assessment'))
+            return redirect(url_for('topics'))
         else:
             flash('Login Unsuccessful. Please check username and password', 'danger')
     return render_template('login.html')
@@ -86,17 +92,50 @@ def initial_assessment():
         return redirect(url_for('index'))
     return render_template('initial_assessment.html', questions=questions)
 
-@app.route('/topic')
+@app.route('/topics', methods=['GET', 'POST'])
 @login_required
-def topic():
-    return render_template('topics.html')
+def topics():
+    if request.method == 'POST':
+        print("reached")
+        localStorage = localStoragePy('sql_tutor')
+        data = request.get_json()
+        topic_index = int(data.get('topic_index'))
+        print(topic_index)
+        questions = load_questions_from_json('questions.json')
+        selected_topic_questions = questions['topics'][topic_index]['questions']
+        localStorage.setItem('selected_topic_questions', selected_topic_questions)
+        return jsonify({'redirect': url_for('index')})
+    else:
+        questions = load_questions_from_json('questions.json')
+        topics = [topic['name'] for topic in questions['topics']]
+        return render_template('topics.html', topics=topics)
+
+
+@app.route('/set_topic')
+@login_required
+def set_topic():
+    localStorage = localStoragePy('sql_tutor')
+    print(request.values.get('topic_index'))
+    workspace_id = request.values.get('workspace_id')
+    topic_index = request.values.get('topic_index')
+    questions = load_questions_from_json('questions.json')
+    topic_index = int(topic_index)
+    print(topic_index)
+    print(questions['topics'][topic_index])
+    selected_topic_questions = questions['topics'][topic_index]['questions']
+    
+    localStorage.setItem('selected_topic_questions', selected_topic_questions)
+    return render_template('index.html', questions_json=selected_topic_questions, workspace_id=workspace_id, topic_index=topic_index)
 
 @app.route('/index')
 @login_required
 def index():
-    questions = load_questions_from_json('questions.json')
+    questions = session.get('selected_topic_questions', [])
     questions_json = json.dumps(questions)  # Convert to JSON string
-    return render_template('index.html', questions_json=questions_json)
+    workspace_id = request.args.get('workspace_id')
+    topic_index= request.args.get('topic_index')
+    return render_template('index.html', questions_json=questions_json, workspace_id=workspace_id, topic_index=topic_index)
+
 
 @app.route('/generate_overall_feedback', methods=['POST'])
 def generate_overall_feedback():

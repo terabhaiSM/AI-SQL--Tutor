@@ -1,8 +1,8 @@
-{% extends "base.html" %} 
+{% extends "base.html" %}
 {% block content %}
 <h1 class="text-center">SQL Learning Tool</h1>
 <div class="text-center mb-4">
-  <a href="{{ url_for('download_db') }}" class="btn btn-primary">Download SQLite Database</a>
+  <a href="{{ url_for('download_db', workspace_id=request.args.get('workspace_id')) }}" class="btn btn-primary">Download SQLite Database</a>
   <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
 </div>
 <div id="question-container" class="mb-4">
@@ -13,9 +13,11 @@
   <label for="sql-input">Write your SQL query:</label>
   <textarea id="sql-input" class="form-control" rows="5"></textarea>
   <input type="hidden" id="questions-json" value="{{ questions_json }}" />
+  <input type="hidden" id="workspace-id" value="{{ request.args.get('workspace_id') }}" />
 </div>
-<button id="submit-query" class="btn btn-success">Submit</button>
+<button id="submit-query" class="btn btn-success" disabled>Submit</button>
 <button id="next-question" class="btn btn-primary">Next Question</button>
+<button id="prev-question" class="btn btn-secondary d-none">Previous Question</button>
 <div id="feedback-container" class="mt-4">
   <h4>Feedback:</h4>
   <div id="feedback-text" class="text-break"></div>
@@ -29,64 +31,98 @@
 </div>
 
 <script>
-    document.addEventListener("DOMContentLoaded", (event) => {
-      const questionsJsonString = document.getElementById("questions-json").value;
-      const quizQuestions = JSON.parse(questionsJsonString);
-  
-      let currentQuestionIndex = 0;
-      let allFeedbacks = [];
-  
-      function loadQuestion(index) {
-        const question = quizQuestions[index];
-        document.getElementById("question-text").textContent = question.text;
-      }
-  
-      loadQuestion(currentQuestionIndex);
-  
-      document.getElementById("submit-query").addEventListener("click", async () => {
-        const query = document.getElementById("sql-input").value;
-        const questionId = quizQuestions[currentQuestionIndex].id;
-  
-        const response = await fetch('{{ url_for("submit_query") }}', {
+  document.addEventListener("DOMContentLoaded", (event) => {
+    const questionsJsonString = document.getElementById("questions-json").value;
+    const workspaceId = document.getElementById("workspace-id").value;
+    const quizQuestions = JSON.parse(questionsJsonString);
+
+    let currentQuestionIndex = 0;
+    let allFeedbacks = [];
+
+    function loadQuestion(index) {
+      const question = quizQuestions[index];
+      document.getElementById("question-text").textContent = question.text;
+    }
+
+    loadQuestion(currentQuestionIndex);
+
+    const sqlInput = document.getElementById("sql-input");
+    const submitBtn = document.getElementById("submit-query");
+    const nextBtn = document.getElementById("next-question");
+    const prevBtn = document.getElementById("prev-question");
+
+    // Initially disable the next button
+    nextBtn.disabled = true;
+
+    // Enable/disable submit button based on input length
+    sqlInput.addEventListener("input", () => {
+      submitBtn.disabled = !(sqlInput.value.length > 10);
+    });
+
+    submitBtn.addEventListener("click", async () => {
+      const query = sqlInput.value;
+      const questionId = quizQuestions[currentQuestionIndex].id;
+
+      const response = await fetch(`{{ url_for("submit_query") }}?workspace_id=${workspaceId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ question: quizQuestions[currentQuestionIndex].text, query: query })
+      });
+      const data = await response.json();
+      document.getElementById('feedback-text').innerHTML = data.feedback;
+      allFeedbacks.push(data.feedback);
+
+      // Enable next button after submit
+      nextBtn.disabled = false;
+    });
+
+    nextBtn.addEventListener("click", async () => {
+      currentQuestionIndex++;
+      sqlInput.value = "";
+      submitBtn.disabled = true; // Disable submit button for next question
+      prevBtn.classList.remove("d-none"); // Show previous button after first question
+
+      if (currentQuestionIndex < quizQuestions.length) {
+        loadQuestion(currentQuestionIndex);
+        document.getElementById("feedback-text").innerHTML = ""; // Clear previous feedback
+      } else {
+        // Hide question, input fields, and feedback container
+        document.getElementById("question-container").classList.add("d-none");
+        document.getElementById("sql-input-container").classList.add("d-none");
+        document.getElementById("submit-query").classList.add("d-none");
+        nextBtn.classList.add("d-none");
+        prevBtn.classList.add("d-none");
+        document.getElementById("feedback-container").classList.add("d-none");
+
+        // Display overall feedback
+        document.getElementById("overall-feedback-container").classList.remove("d-none");
+
+        const overallFeedbackResponse = await fetch('{{ url_for("generate_overall_feedback") }}', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ question: quizQuestions[currentQuestionIndex].text, query: query })
+          body: JSON.stringify({ feedbacks: allFeedbacks })
         });
-        const data = await response.json();
-        document.getElementById('feedback-text').innerHTML = data.feedback;
-        allFeedbacks.push(data.feedback);
-      });
-  
-      document.getElementById("next-question").addEventListener("click", async () => {
-        currentQuestionIndex++;
-        document.getElementById("sql-input").value = ""; 
-        if (currentQuestionIndex < quizQuestions.length) {
-          loadQuestion(currentQuestionIndex);
-        } else {
-          // Hide question, input fields, and feedback container
-          document.getElementById("question-container").classList.add("d-none");
-          document.getElementById("sql-input-container").classList.add("d-none");
-          document.getElementById("submit-query").classList.add("d-none");
-          document.getElementById("next-question").classList.add("d-none");
-          document.getElementById("feedback-container").classList.add("d-none");
-
-          // Display overall feedback
-          document.getElementById("overall-feedback-container").classList.remove("d-none");
-
-          const overallFeedbackResponse = await fetch('{{ url_for("generate_overall_feedback") }}', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ feedbacks: allFeedbacks })
-          });
-          const overallFeedbackData = await overallFeedbackResponse.json();
-          document.getElementById('overall-feedback-text').innerHTML = overallFeedbackData.overall_feedback;
-          document.getElementById('all-feedbacks-text').innerHTML = allFeedbacks.join("<br><br>");
-        }
-      });
+        const overallFeedbackData = await overallFeedbackResponse.json();
+        document.getElementById('overall-feedback-text').innerHTML = overallFeedbackData.overall_feedback;
+        document.getElementById('all-feedbacks-text').innerHTML = allFeedbacks.join("<br><br>");
+      }
     });
-</script>  
+
+    prevBtn.addEventListener("click", () => {
+      if (currentQuestionIndex > 0) {
+        currentQuestionIndex--;
+        loadQuestion(currentQuestionIndex);
+        document.getElementById("feedback-text").innerHTML = ""; // Clear previous feedback
+      }
+      // Disable previous button if at the first question again
+      if (currentQuestionIndex === 0) {
+        prevBtn.classList.add("d-none");
+      }
+    });
+  });
+</script>
 {% endblock %}

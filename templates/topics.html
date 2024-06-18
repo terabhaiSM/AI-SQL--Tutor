@@ -5,50 +5,93 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SQL Learning Tool</title>
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
 </head>
 <body>
     <div class="container mt-5">
         <h1 class="text-center">SQL Learning Tool</h1>
         <div class="form-group">
             <label for="topic-select">Choose a Topic:</label>
-            <select id="topic-select" class="form-control">
-                <option value="" disabled selected>Select a topic</option>
-            </select>
+            <select id="topic-select" class="form-control" multiple style="width: 100%;"></select>
         </div>
         <div class="text-center mt-4">
             <button id="start-quiz" class="btn btn-primary">Start Quiz</button>
         </div>
+        <div class="mt-5">
+            <h3>Your Workspaces</h3>
+            <div id="workspace-list" class="list-group"></div>
+        </div>
     </div>
 
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
     <script>
+        let topicMap = {};
+
+        fetch('/workspace/workspaces', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            const workspaces = data;
+            const workspaceList = document.getElementById('workspace-list');
+            console.log(workspaces);
+            workspaces.forEach(workspace => {
+                const workspaceItem = document.createElement('div');
+                workspaceItem.classList.add('list-group-item');
+                const topicNames = workspace.topics.map(topicId => topicMap[topicId]).join(', ');
+                workspaceItem.textContent = `Workspace ID: ${workspace.id} - Topics: ${topicNames}`;
+                workspaceList.appendChild(workspaceItem);
+            });
+        })
+        .catch(e => console.log(e));
+
         document.addEventListener("DOMContentLoaded", function() {
-            fetch('questions.json')
+            fetch('/static/questions.json')
                 .then(response => response.json())
                 .then(data => {
-                    const topicSelect = document.getElementById("topic-select");
+                    console.log(data);
+                    const topicSelect = $('#topic-select');
 
-                    // Populate the topic dropdown
-                    data.topics.forEach((topic, index) => {
-                        const option = document.createElement("option");
-                        option.value = index;
-                        option.textContent = topic.name;
-                        topicSelect.appendChild(option);
+                    // Initialize Select2 on the select element
+                    topicSelect.select2({
+                        placeholder: "Select a topic"
+                    });
+
+                    // Populate the topic dropdown and map
+                    data.topics.forEach(topic => {
+                        topicMap[topic.id] = topic.name;
+                        const option = new Option(topic.name, topic.id, false, false);
+                        topicSelect.append(option).trigger('change');
                     });
 
                     // Event listener for Start Quiz button
-                    document.getElementById("start-quiz").addEventListener("click", () => {
-                        const selectedTopicIndex = topicSelect.value;
-                        if (selectedTopicIndex === "") {
-                            alert("Please select a topic.");
+                    document.getElementById("start-quiz").addEventListener("click", async () => {
+                        const selectedTopics = topicSelect.val();
+                        if (!selectedTopics.length) {
+                            alert("Please select at least one topic.");
                             return;
                         }
-                        const selectedTopic = data.topics[selectedTopicIndex];
 
-                        // Store selected topic questions in localStorage
-                        localStorage.setItem("selectedTopicQuestions", JSON.stringify(selectedTopic.questions));
-
-                        // Redirect to index.html
-                        window.location.href = "index.html";
+                        // Call the create_workspace endpoint
+                        const response = await fetch('workspace/create_workspace', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ topic_id: selectedTopics })
+                        });
+                        const data = await response.json();
+                        if (response.status === 201 || response.status === 200) {
+                            alert('Workspace created successfully');
+                            // Redirect to the workspace page
+                            window.location.href = data.redirect;
+                        } else {
+                            alert('Error creating workspace: ' + data.message);
+                        }
                     });
                 })
                 .catch(error => console.error('Error loading questions.json:', error));

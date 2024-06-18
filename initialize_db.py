@@ -1,5 +1,5 @@
 from app import app, db
-from models import User, Question
+from app import User, Question
 
 with app.app_context():
     db.create_all()
