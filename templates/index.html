@@ -1,38 +1,157 @@
 {% extends "base.html" %}
+{% block head %}
+<style>
+  .card {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+
+  .card-header {
+    background-color: #f7f7f7;
+    border-bottom: 1px solid #ccc;
+    padding: 15px;
+  }
+
+  .card-body {
+    padding: 20px;
+  }
+
+  .card-footer {
+    background-color: #f7f7f7;
+    border-top: 1px solid #ccc;
+    padding: 15px;
+  }
+
+  .text-right {
+    text-align: right;
+  }
+
+  .text-center {
+    text-align: center;
+  }
+
+  .mb-4 {
+    margin-bottom: 1.5rem;
+  }
+
+  .mt-4 {
+    margin-top: 1.5rem;
+  }
+
+  .text-break {
+    word-break: break-word;
+  }
+
+  .d-none {
+    display: none;
+  }
+
+  .progress {
+    position: relative;
+    height: 30px;
+    background-color: #f3f3f3;
+    border-radius: 50px;
+    overflow: hidden;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.1);
+  }
+
+  .progress-bar {
+    position: absolute;
+    height: 100%;
+    transition: width 0.5s;
+    background: linear-gradient(90deg, #ff7e5f, #feb47b);
+    border-radius: 50px;
+  }
+
+  .progress-container {
+    margin-top: 20px;
+    margin-bottom: 40px;
+  }
+
+  .progress-text {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    font-weight: bold;
+    line-height: 30px;
+    color: #fff;
+  }
+</style>
+{% endblock %}
 {% block content %}
 <h1 class="text-center">SQL Learning Tool</h1>
 <div class="text-center mb-4">
   <a href="{{ url_for('download_db', workspace_id=request.args.get('workspace_id')) }}" class="btn btn-primary">Download SQLite Database</a>
   <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
 </div>
-<div id="question-container" class="mb-4">
-  <h3>Question:</h3>
-  <p id="question-text"></p>
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card">
+        <div class="card-header">
+          <div class="row">
+            <div class="col-md-6">
+              <h5>Database</h5>
+              <p>Employee <a href="#">View Database Schema</a></p>
+            </div>
+            <div class="col-md-6 text-right">
+              <h5>Topic</h5>
+              <p>Join <a href="#">Learn About This Topic</a></p>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-12 text-right">
+              <h5>Level</h5>
+              <p>Beginner</p>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <h4 id="question">Question: </h4>
+          <h4 id="question-text"></h4>
+          <label for="sql-input">Write your SQL query:</label>
+          <textarea id="sql-input" class="form-control" rows="5"></textarea>
+          <input type="hidden" id="questions-json" value="{{ questions_json }}" />
+          <input type="hidden" id="workspace-id" value="{{ request.args.get('workspace_id') }}" />
+        </div>
+        <div class="card-footer text-right">
+          <button id="prev-question" class="btn btn-secondary d-none">Previous Question</button>
+          <button id="submit-query" class="btn btn-success">Test Answer</button>
+          <button id="next-question" class="btn btn-primary d-none">Next Question</button>
+        </div>
+      </div>
+      <div id="feedback-container" class="mt-4">
+        <h4>Answer Feedback</h4>
+        <div id="feedback-text" class="text-break"></div>
+        <div id="progress-wrapper" class="progress-wrapper" style="margin-bottom: 30px;">
+          <div id="progress-container" class="progress-container d-none">
+            <h5>Score: <span id="score-text">0</span>/10</h5>
+            <div class="progress">
+              <div id="progress-bar" class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="10"></div>
+              <div class="progress-text" id="progress-text">0/10</div>
+            </div>
+          </div>
+        </div>
+        <div id="chart-wrapper" class="chart-wrapper d-none" style="margin-bottom: 30px;">
+          <canvas id="score-chart"></canvas>
+        </div>
+        
+      </div>
+      <div id="overall-feedback-container" class="mt-4 d-none">
+        <h4>Overall Feedback:</h4>
+        <div id="overall-feedback-text" class="text-break"></div>
+        <h4>All Question Feedbacks:</h4>
+        <div id="all-feedbacks-text" class="text-break"></div>
+      </div>
+    </div>
+  </div>
 </div>
-<div id="sql-input-container" class="form-group">
-  <label for="sql-input">Write your SQL query:</label>
-  <textarea id="sql-input" class="form-control" rows="5"></textarea>
-  <input type="hidden" id="questions-json" value="{{ questions_json }}" />
-  <input type="hidden" id="workspace-id" value="{{ request.args.get('workspace_id') }}" />
-</div>
-<button id="submit-query" class="btn btn-success" disabled>Submit</button>
-<button id="next-question" class="btn btn-primary">Next Question</button>
-<button id="prev-question" class="btn btn-secondary d-none">Previous Question</button>
-<div id="feedback-container" class="mt-4">
-  <h4>Feedback:</h4>
-  <div id="feedback-text" class="text-break"></div>
-</div>
-
-<div id="overall-feedback-container" class="mt-4 d-none">
-  <h4>Overall Feedback:</h4>
-  <div id="overall-feedback-text" class="text-break"></div>
-  <h4>All Question Feedbacks:</h4>
-  <div id="all-feedbacks-text" class="text-break"></div>
-</div>
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
 <script>
   document.addEventListener("DOMContentLoaded", (event) => {
     const questionsJsonString = document.getElementById("questions-json").value;
+    console.log(questionsJsonString);
     const workspaceId = document.getElementById("workspace-id").value;
     const quizQuestions = JSON.parse(questionsJsonString);
 
@@ -51,8 +170,55 @@
     const nextBtn = document.getElementById("next-question");
     const prevBtn = document.getElementById("prev-question");
 
-    // Initially disable the next button
-    nextBtn.disabled = true;
+    // Initialize the 3D pie chart with datalabels plugin
+    const ctx = document.getElementById('score-chart').getContext('2d');
+    const scoreChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Marks Scored', 'Remaining Marks'],
+        datasets: [{
+          data: [0, 10],
+          backgroundColor: ['#4caf50', '#ccc'],
+          hoverOffset: 4,
+          borderWidth: 1,
+          borderColor: '#fff'
+        }]
+      },
+      options: {
+        plugins: {
+          datalabels: {
+            color: '#fff',
+            textAlign: 'center',
+            font: {
+              weight: 'bold',
+              size: 14
+            },
+            formatter: (value, ctx) => {
+              let sum = 0;
+              let dataArr = ctx.chart.data.datasets[0].data;
+              dataArr.map(data => {
+                sum += data;
+              });
+              let percentage = (value * 100 / sum).toFixed(2) + "%";
+              return percentage;
+            }
+          }
+        },
+        responsive: true,
+        maintainAspectRatio: false,
+        cutoutPercentage: 60,
+        rotation: -0.5 * Math.PI,
+        animation: {
+          animateScale: true,
+          animateRotate: true
+        }
+      }
+    });
+
+    function updateScoreChart(score) {
+      scoreChart.data.datasets[0].data = [score, 10 - score];
+      scoreChart.update();
+    }
 
     // Enable/disable submit button based on input length
     sqlInput.addEventListener("input", () => {
@@ -63,19 +229,66 @@
       const query = sqlInput.value;
       const questionId = quizQuestions[currentQuestionIndex].id;
 
-      const response = await fetch(`{{ url_for("submit_query") }}?workspace_id=${workspaceId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ question: quizQuestions[currentQuestionIndex].text, query: query })
-      });
-      const data = await response.json();
-      document.getElementById('feedback-text').innerHTML = data.feedback;
-      allFeedbacks.push(data.feedback);
+      console.log("Submitting query:", query); // Debug log
 
-      // Enable next button after submit
-      nextBtn.disabled = false;
+      try {
+        const response = await fetch(`{{ url_for("submit_query") }}?workspace_id=${workspaceId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ question: quizQuestions[currentQuestionIndex].text, query: query })
+        });
+
+        console.log("Response received:", response); // Debug log
+
+        if (response.ok) {
+          const data = await response.json();
+          document.getElementById('feedback-text').innerHTML = data.feedback;
+          allFeedbacks.push(data.feedback);
+
+          console.log("Feedback:", data.feedback); // Debug log
+
+          // Fetch the score from the OpenAI API
+          const scoreResponse = await fetch('{{ url_for("evaluate_answer") }}', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ question: quizQuestions[currentQuestionIndex].text, answer: query })
+          });
+
+          console.log("Score response received:", scoreResponse); // Debug log
+
+          if (scoreResponse.ok) {
+            const scoreData = await scoreResponse.json();
+            const score = parseInt(scoreData.score, 10);
+
+            console.log("Score:", score); // Debug log
+
+            // Update the progress bar
+            document.getElementById('score-text').textContent = score;
+            const progressBar = document.getElementById('progress-bar');
+            progressBar.style.width = (score * 10) + '%';
+            progressBar.setAttribute('aria-valuenow', score);
+            document.getElementById('progress-container').classList.remove('d-none');
+
+            // Update the pie chart
+            updateScoreChart(score);
+            document.getElementById('chart-wrapper').classList.remove('d-none');
+
+            // Enable next button after submit
+            nextBtn.classList.remove("d-none");
+            nextBtn.disabled = false;
+          } else {
+            console.error("Failed to fetch score:", scoreResponse.statusText);
+          }
+        } else {
+          console.error("Failed to fetch feedback:", response.statusText);
+        }
+      } catch (error) {
+        console.error("Error submitting query:", error);
+      }
     });
 
     nextBtn.addEventListener("click", async () => {
@@ -87,6 +300,10 @@
       if (currentQuestionIndex < quizQuestions.length) {
         loadQuestion(currentQuestionIndex);
         document.getElementById("feedback-text").innerHTML = ""; // Clear previous feedback
+        document.getElementById('progress-container').classList.add('d-none'); // Hide progress bar
+        document.getElementById('chart-wrapper').classList.add('d-none'); // Hide pie chart
+        nextBtn.disabled = true; // Disable next button until the next answer is submitted
+        nextBtn.classList.add("d-none");
       } else {
         // Hide question, input fields, and feedback container
         document.getElementById("question-container").classList.add("d-none");
@@ -108,7 +325,7 @@
         });
         const overallFeedbackData = await overallFeedbackResponse.json();
         document.getElementById('overall-feedback-text').innerHTML = overallFeedbackData.overall_feedback;
-        document.getElementById('all-feedbacks-text').innerHTML = allFeedbacks.join("<br><br>");
+        document.getElementById('all-feedbacks-text').innerHTML = allFeedbacks.join('<br><br>');
       }
     });
 
@@ -116,13 +333,21 @@
       if (currentQuestionIndex > 0) {
         currentQuestionIndex--;
         loadQuestion(currentQuestionIndex);
+        sqlInput.value = "";
         document.getElementById("feedback-text").innerHTML = ""; // Clear previous feedback
-      }
-      // Disable previous button if at the first question again
-      if (currentQuestionIndex === 0) {
-        prevBtn.classList.add("d-none");
+        document.getElementById('progress-container').classList.add('d-none'); // Hide progress bar
+        document.getElementById('chart-wrapper').classList.add('d-none'); // Hide pie chart
+        nextBtn.disabled = true; // Disable next button until the next answer is submitted
+        nextBtn.classList.add("d-none");
+
+        // Hide previous button if on the first question
+        if (currentQuestionIndex === 0) {
+          prevBtn.classList.add("d-none");
+        }
       }
     });
   });
 </script>
+
+
 {% endblock %}

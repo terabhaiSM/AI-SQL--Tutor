@@ -11,6 +11,14 @@ import openai
 from localStoragePy import localStoragePy
 from flask_migrate import Migrate
 from workspace_routes import workspace_bp
+from openai import OpenAI
+# from defined_prompts import initial_assessment_prompt
+
+from setopenai import setupopenai
+setupopenai()
+
+# Initialize the OpenAI client
+client = OpenAI()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'd1056c7caffd817f811eb140761c7a50'
@@ -125,15 +133,15 @@ def set_topic():
     selected_topic_questions = questions['topics'][topic_index]['questions']
     
     localStorage.setItem('selected_topic_questions', selected_topic_questions)
-    return render_template('index.html', questions_json=selected_topic_questions, workspace_id=workspace_id, topic_index=topic_index)
-
+    # return render_template('index.html', questions_json=selected_topic_questions, workspace_id=workspace_id, topic_index=topic_index)
+    return redirect(url_for('index', questions_json=selected_topic_questions, workspace_id=workspace_id, topic_index=topic_index))
 @app.route('/index')
 @login_required
 def index():
     questions = session.get('selected_topic_questions', [])
     questions_json = json.dumps(questions)  # Convert to JSON string
-    workspace_id = request.args.get('workspace_id')
-    topic_index= request.args.get('topic_index')
+    workspace_id = request.values.get('workspace_id')
+    topic_index= request.values.get('topic_index')
     return render_template('index.html', questions_json=questions_json, workspace_id=workspace_id, topic_index=topic_index)
 
 
@@ -176,12 +184,40 @@ def assess():
     data = request.get_json()
     question_id = data['question_id']
     query = data['query']
-    
-    # Here you would normally call the logic in asses.py. For simplicity, I'll call a function directly.
-    from asses import assess_query
     feedback = assess_query(question_id, query)
     
     return jsonify({'feedback': feedback})
+
+@app.route('/evaluate_answer', methods=['POST'])
+def evaluate_answer():
+    data = request.get_json()
+    question = data.get('question')
+    answer = data.get('answer')
+
+    # Here you will call OpenAI API to evaluate the answer
+    prompt = f"Evaluate the following solution and provide a score out of 10. Just provide the number and no statement as i need to use it in progress bar Question: {question} Answer: {answer}"
+    conversation_history = [
+    {"role": "system", "content": prompt}]
+    completion = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=conversation_history
+    )
+    assistant_reply = completion.choices[0].message.content  # Extract suggestions from assistant_reply if available
+    print(assistant_reply)
+    # if assistant_reply.suggestions:
+    #     suggestions = assistant_reply.suggestions
+    # conversation_history.append({"role": "assistant", "content": assistant_reply.content, "suggestions": suggestions})
+    return jsonify({"score": assistant_reply})
+    # response = client.chat.completions.create(
+    #     engine="text-davinci-003",
+    #     prompt=prompt,
+    #     max_tokens=50
+    # )
+    
+    # # Extract the score from OpenAI response
+    # score = response.choices[0].text.strip()
+
+    # return jsonify({'score': score})
 
 if __name__ == '__main__':
     app.run(debug=True)
