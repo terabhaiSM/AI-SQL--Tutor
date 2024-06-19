@@ -227,7 +227,7 @@
 
     submitBtn.addEventListener("click", async () => {
       const query = sqlInput.value;
-      const questionId = quizQuestions[currentQuestionIndex].id;
+      const question = quizQuestions[currentQuestionIndex];
 
       console.log("Submitting query:", query); // Debug log
 
@@ -237,7 +237,7 @@
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ question: quizQuestions[currentQuestionIndex].text, query: query })
+          body: JSON.stringify({ question: question.text, query: query })
         });
 
         console.log("Response received:", response); // Debug log
@@ -255,7 +255,7 @@
             headers: {
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ question: quizQuestions[currentQuestionIndex].text, answer: query })
+            body: JSON.stringify({ question: question.text, answer: query })
           });
 
           console.log("Score response received:", scoreResponse); // Debug log
@@ -280,6 +280,22 @@
             // Enable next button after submit
             nextBtn.classList.remove("d-none");
             nextBtn.disabled = false;
+
+            // Save the details to the workspace
+            await fetch('/workspace/save_workspace_details', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                workspace_id: workspaceId,
+                question: question,
+                answer: query,
+                feedback: data.feedback,
+                rating: score
+              })
+            });
+
           } else {
             console.error("Failed to fetch score:", scoreResponse.statusText);
           }
@@ -348,6 +364,4 @@
     });
   });
 </script>
-
-
 {% endblock %}

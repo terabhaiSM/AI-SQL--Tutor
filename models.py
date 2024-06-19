@@ -53,9 +53,9 @@ class Workspace(db.Model):
 class WorkspaceDetails(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     workspace_id = db.Column(db.Integer, db.ForeignKey('workspace.id'), nullable=False)
-    workspace_practice_seq = db.Column(db.Integer, nullable=False)
+    workspace_practice_seq = db.Column(db.Integer, nullable=True)
     question_desc_json = db.Column(db.JSON, nullable=False)
-    answer_desc = db.Column(db.String(500), nullable=False)
+    answer_desc = db.Column(db.String(2000), nullable=True)
     correct_boolean = db.Column(db.Boolean, default=False)
     feedback_from_AI_json = db.Column(db.JSON, nullable=True)
     AI_rating = db.Column(db.Integer, nullable=True)

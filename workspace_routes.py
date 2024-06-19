@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, url_for
 from models import db, Workspace, WorkspaceDetails, Question, Topic
 from workspace_service import get_question, save_last_access_time, generate_graph_data
 from flask_login import login_required, current_user
+import json
 
 workspace_bp = Blueprint("workspace_bp", __name__)
 
@@ -102,3 +103,48 @@ def get_user_workspaces():
         })
     print(workspaces_data)
     return jsonify(workspaces_data)
+
+@workspace_bp.route('/save_workspace_details', methods=['POST'])
+@login_required
+def save_workspace_details():
+    data = request.get_json()
+    workspace_id = data['workspace_id']
+    question = data['question']
+    answer = data['answer']
+    feedback = data['feedback']
+    rating = data['rating']
+
+    question['answer'] = answer
+    question['feedback'] = feedback
+    print(question)
+
+    # Fetch the existing workspace details from the database
+    workspace_detail = WorkspaceDetails.query.filter_by(workspace_id=workspace_id).first()
+
+    if workspace_detail is None:
+        # If no existing workspace details found, create a new one
+        workspace_detail = WorkspaceDetails(
+            workspace_id=workspace_id,
+            question_desc_json=json.dumps([question]),
+            feedback_from_AI_json=json.dumps([feedback]),
+            AI_rating=rating,
+            correct_boolean=False
+        )
+    else:
+        # If existing workspace details are found, update them
+        question_desc_list = json.loads(workspace_detail.question_desc_json)
+        feedback_list = json.loads(workspace_detail.feedback_from_AI_json)
+        
+        # Append new question and feedback to existing lists
+        question_desc_list.append(question)
+        feedback_list.append(feedback)
+
+        workspace_detail.question_desc_json = json.dumps(question_desc_list)
+        workspace_detail.feedback_from_AI_json = json.dumps(feedback_list)
+        workspace_detail.AI_rating = rating  # Update the rating
+        workspace_detail.correct_boolean = False  # Update the correct boolean (if needed)
+
+    db.session.add(workspace_detail)
+    db.session.commit()
+    
+    return jsonify({"status": "success"}), 200
