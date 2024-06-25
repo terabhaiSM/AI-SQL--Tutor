@@ -1,0 +1,74 @@
+/* Sidebar.css */
+.sidebar {
+    width: 25%;
+    background-color: #f5f5f5;
+    border-right: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    transition: width 0.3s;
+    position: relative;
+}
+
+.sidebar.collapsed {
+    width: 50px;
+}
+
+.tabs {
+    display: flex;
+    flex-direction: column;
+}
+
+.tab-button {
+    padding: 10px;
+    border: none;
+    background-color: #f5f5f5;
+    cursor: pointer;
+    text-align: left;
+}
+
+.tab-button.active {
+    background-color: #e0e0e0;
+}
+
+.tab-content {
+    padding: 10px;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.steps-content {
+    /* Additional styling for steps content */
+}
+
+.history-content {
+    /* Additional styling for history content */
+}
+
+.chat-message {
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 10px;
+    max-width: 60%;
+}
+
+.ai-message {
+    background-color: #e1f5fe;
+    align-self: flex-start;
+}
+
+.user-message {
+    background-color: #c8e6c9;
+    align-self: flex-end;
+}
+
+.toggle-button {
+    position: absolute;
+    top: 10px;
+    right: -20px;
+    width: 20px;
+    height: 20px;
+    background-color: #ddd;
+    border: none;
+    cursor: pointer;
+    z-index: 1;
+}

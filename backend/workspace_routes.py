@@ -148,3 +148,19 @@ def save_workspace_details():
     db.session.commit()
     
     return jsonify({"status": "success"}), 200
+
+@workspace_bp.route('/workspace/details/<int:workspace_id>', methods=['GET'])
+def get_workspace_details(workspace_id):
+    workspace_detail = WorkspaceDetails.query.filter_by(workspace_id=workspace_id).first()
+    if not workspace_detail:
+        return jsonify({"error": "Workspace not found"}), 404
+    
+    # Assuming question_desc_json and feedback_from_AI_json are JSON fields
+    questions = workspace_detail.question_desc_json
+    feedbacks = workspace_detail.feedback_from_AI_json
+
+    return jsonify({
+        "workspace_id": workspace_id,
+        "questions": questions,
+        "feedbacks": feedbacks
+    }), 200

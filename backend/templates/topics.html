@@ -122,10 +122,29 @@
                         <div class="progress">
                             <div class="progress-bar" role="progressbar" style="width: ${workspace.progress}%" aria-valuenow="${workspace.progress}" aria-valuemin="0" aria-valuemax="100">${workspace.progress}% Complete</div>
                         </div>
-                        <button class="keep-progress-btn">Keep Making Progress</button>
+                        <button class="keep-progress-btn" data-workspace-id="${workspace.id}">Keep Making Progress</button>
                     </div>
                 `;
                 workspaceList.appendChild(workspaceItem);
+            });
+
+            // Add event listeners for the Keep Making Progress buttons
+            document.querySelectorAll('.keep-progress-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const workspaceId = this.getAttribute('data-workspace-id');
+                    fetch(`/workspace/workspace/details/${workspaceId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.error) {
+                                alert(data.error);
+                            } else {
+                                console.log(data);
+                                // Handle the fetched data, for example:
+                                // Redirect to another page, show a modal, etc.
+                            }
+                        })
+                        .catch(e => console.log(e));
+                });
             });
         })
         .catch(e => console.log(e));
