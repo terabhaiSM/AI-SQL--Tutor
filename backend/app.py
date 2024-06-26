@@ -12,6 +12,7 @@ from localStoragePy import localStoragePy
 from flask_migrate import Migrate
 from workspace_routes import workspace_bp
 from openai import OpenAI
+from flask_cors import CORS
 # from defined_prompts import initial_assessment_prompt
 
 from setopenai import setupopenai
@@ -21,6 +22,7 @@ setupopenai()
 client = OpenAI()
 
 app = Flask(__name__)
+CORS(app)
 app.config['SECRET_KEY'] = 'd1056c7caffd817f811eb140761c7a50'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://test_rybf_user:sv03qDGkwfnxR3gJMHzXeIwAJAQx72v1@dpg-cpkiq7a0si5c73crc8m0-a.singapore-postgres.render.com/test_rybf'
 migrate = Migrate()
@@ -118,6 +120,119 @@ def topics():
         topics = [topic['name'] for topic in questions['topics']]
         return render_template('topics.html', topics=topics)
 
+# # In-memory storage for chat history
+# chat_history = []
+
+# @app.route('/api/send_message', methods=['POST'])
+# def send_message():
+#     data = request.json
+#     user_message = data.get('message')
+
+#     if not user_message:
+#         return jsonify({'error': 'No message provided'}), 400
+
+#     # Add user message to chat history
+#     chat_history.append({'role': 'user', 'content': user_message})
+
+#     # Prepare the chat history for OpenAI
+#     conversation = [{'role': msg['role'], 'content': msg['content']} for msg in chat_history]
+#     print(conversation)
+#     try:
+#         completion = client.chat.completions.create(
+#         model="gpt-3.5-turbo",
+#         messages=conversation
+#     )
+#         print(completion)
+#         # Get the response from OpenAI
+#         ai_message = completion.choices[0].message.content
+
+#         # Add AI response to chat history
+#         chat_history.append({'role': 'assistant', 'content': ai_message})
+#         print(ai_message)
+
+#         return jsonify({'message': ai_message})
+
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500
+
+# @app.route('/api/chat_history', methods=['GET'])
+# def get_chat_history():
+#     return jsonify({'history': chat_history})
+
+# In-memory storage for chat history
+chat_history = []
+
+def generate_question(conversation, question_type):
+    prompt = f"{conversation}\n\nPlease generate a {question_type} question."
+    
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[{'role': 'system', 'content': 'You are an assistant.'},
+                  {'role': 'user', 'content': prompt}]
+    )
+    
+    return response.choices[0].message.content
+
+@app.route('/api/send_message', methods=['POST'])
+def send_message():
+    data = request.json
+    user_message = data.get('message')
+
+    if not user_message:
+        return jsonify({'error': 'No message provided'}), 400
+
+    # Add user message to chat history
+    chat_history.append({'role': 'user', 'content': user_message})
+
+    # Prepare the chat history for OpenAI
+    conversation = [{'role': msg['role'], 'content': msg['content']} for msg in chat_history]
+
+    try:
+        # Call OpenAI API to generate a response
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=conversation
+        )
+
+        # Get the response from OpenAI
+        ai_message = response.choices[0].message.content
+
+        # Add AI response to chat history
+        chat_history.append({'role': 'assistant', 'content': ai_message})
+
+        # Include suggestive buttons for question type selection
+        suggestive_buttons = ['Generate MCQ', 'Generate Descriptive Question']
+
+        return jsonify({
+            'message': ai_message,
+            'suggestions': suggestive_buttons
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/generate_question', methods=['POST'])
+def generate_question_endpoint():
+    data = request.json
+    question_type = data.get('question_type', 'descriptive')
+
+    # Prepare the chat history for OpenAI
+    conversation = [{'role': msg['role'], 'content': msg['content']} for msg in chat_history]
+
+    try:
+        question = generate_question(conversation, question_type)
+
+        return jsonify({
+            'question': question,
+            'type': question_type
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/chat_history', methods=['GET'])
+def get_chat_history():
+    return jsonify({'history': chat_history})
 
 @app.route('/set_topic')
 @login_required

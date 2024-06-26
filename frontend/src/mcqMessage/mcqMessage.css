@@ -1,0 +1,32 @@
+/* MCQMessage.css */
+.mcq-message {
+    background-color: #e1f5fe;
+    padding: 10px;
+    border-radius: 10px;
+    margin: 5px 0;
+    max-width: 60%;
+    align-self: flex-start;
+}
+
+.mcq-options {
+    display: flex;
+    flex-direction: column;
+}
+
+.mcq-option {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin: 5px 0;
+    cursor: pointer;
+    border-radius: 5px;
+    text-align: left;
+}
+
+.mcq-option.selected {
+    background-color: #c8e6c9;
+}
+
+.mcq-option:disabled {
+    cursor: not-allowed;
+}

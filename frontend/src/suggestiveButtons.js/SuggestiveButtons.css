@@ -1,0 +1,20 @@
+/* SuggestiveButtons.css */
+.suggestive-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.suggestive-button {
+    background-color: #1e88e5;
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    padding: 10px 20px;
+    margin: 5px;
+    cursor: pointer;
+}
+
+.suggestive-button:hover {
+    background-color: #1565c0;
+}
