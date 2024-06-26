@@ -1,32 +1,45 @@
-/* MCQMessage.css */
 .mcq-message {
-    background-color: #e1f5fe;
+    margin: 10px 0;
     padding: 10px;
-    border-radius: 10px;
-    margin: 5px 0;
-    max-width: 60%;
-    align-self: flex-start;
-}
-
-.mcq-options {
-    display: flex;
-    flex-direction: column;
-}
-
-.mcq-option {
-    background-color: #fff;
     border: 1px solid #ddd;
-    padding: 10px;
-    margin: 5px 0;
-    cursor: pointer;
     border-radius: 5px;
-    text-align: left;
+    background-color: #f9f9f9;
 }
 
-.mcq-option.selected {
-    background-color: #c8e6c9;
+.question {
+    font-weight: bold;
+    margin-bottom: 10px;
 }
 
-.mcq-option:disabled {
-    cursor: not-allowed;
+.options {
+    list-style-type: none;
+    padding: 0;
+}
+
+.option {
+    margin: 5px 0;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: #fff;
+    transition: background-color 0.3s;
+}
+
+.option:hover {
+    background-color: #f0f0f0;
+}
+
+.option.selected {
+    background-color: #e0f7fa;
+    border-color: #00acc1;
+}
+
+.evaluation {
+    margin-top: 10px;
+    padding: 10px;
+    border-top: 1px solid #ddd;
+    font-size: 0.9em;
+    color: #555;
+    white-space: pre-wrap; /* Preserve line breaks in explanations */
 }

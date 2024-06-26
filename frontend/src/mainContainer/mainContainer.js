@@ -85,17 +85,32 @@ const MainContainer = () => {
         })
         .then(response => response.json())
         .then(data => {
+            console.log(data);
+            data = JSON.parse(data.question);
+            console.log(data);
             const newQuestion = {
                 sender: 'assistant',
                 type: data.type,
                 text: data.question,
-                options: data.type === 'mcq' ? ['Option 1', 'Option 2', 'Option 3', 'Option 4'] : []
+                options: data.type === 'mcq' ? data.options : {},
+                correctAnswer: data.correctAnswer
             };
             setMessages(prevMessages => [...prevMessages, newQuestion]);
         })
         .catch(error => {
             console.error('Error:', error);
         });
+    };
+
+    const handleEvaluationComplete = () => {
+        setMessages(prevMessages => [
+            ...prevMessages,
+            {
+                sender: 'assistant',
+                type: 'suggestions',
+                suggestions: ['Generate an MCQ question', 'Generate a descriptive question']
+            }
+        ]);
     };
 
     return (
@@ -117,6 +132,8 @@ const MainContainer = () => {
                                     question={message.text}
                                     options={message.options}
                                     onOptionSelect={handleOptionSelect}
+                                    correctAnswer= {message.correctAnswer}
+                                    onEvaluationComplete={handleEvaluationComplete}
                                 />
                             );
                         } else if (message.type === 'suggestions') {
@@ -154,4 +171,5 @@ const MainContainer = () => {
 };
 
 export default MainContainer;
+
 

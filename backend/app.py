@@ -5,7 +5,7 @@ from flask_login import LoginManager, login_user, current_user, logout_user, log
 import sqlite3
 import json
 import requests
-from models import db, bcrypt, login_manager, User, Answer, Workspace, WorkspaceDetails
+from models import db, bcrypt, login_manager, User, Answer, Workspace, WorkspaceDetails, ChatWorkspace
 from assess import create_system_prompt, assess_query
 import openai
 from localStoragePy import localStoragePy
@@ -22,7 +22,7 @@ setupopenai()
 client = OpenAI()
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})  # Enable CORS for your frontend's origin
 app.config['SECRET_KEY'] = 'd1056c7caffd817f811eb140761c7a50'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://test_rybf_user:sv03qDGkwfnxR3gJMHzXeIwAJAQx72v1@dpg-cpkiq7a0si5c73crc8m0-a.singapore-postgres.render.com/test_rybf'
 migrate = Migrate()
@@ -163,14 +163,45 @@ def topics():
 chat_history = []
 
 def generate_question(conversation, question_type):
-    prompt = f"{conversation}\n\nPlease generate a {question_type} question."
-    
+    if question_type == 'mcq':
+        prompt = f"{conversation}\n\nPlease generate a {question_type} question in the following format with markdown with explanations for each options, just follow the format dont generate the same question, generate a sql query based question, also in question type it should be mcq or suggestions:\n\n" \
+             "{\n  \"question\": \"The formation of new states in India falls under which of the following articles of the Constitution:\",\n" \
+             "  \"type\": \ {question_type} \,\n" \
+             "  \"options\": {\n" \
+             "    \"A\": {\n" \
+             "      \"value\": \"Article 3\",\n" \
+             "      \"explanation\": \"**Context:** Hyderabad, one of the bustling metropolitan cities of the country, ceased to be the common capital of Telangana and Andhra Pradesh from Sunday as per the Andhra Pradesh Reorganisation Act, 2014.\\n\\n**Formation of new states:**\\nThe formation of new states in India falls under Article 3 of the Constitution. Parliament holds the power to create new states through legislation. However, such a bill can only be introduced on the recommendation of the President. Before recommending a bill that affects state boundaries or names, the President must consult the respective state legislatures. Parliament can enact laws to create new states with a simple majority.\",\n" \
+             "      \"isCorrectOption\": true\n" \
+             "    },\n" \
+             "    \"B\": {\n" \
+             "      \"value\": \"Article 12\",\n" \
+             "      \"explanation\": null,\n" \
+             "      \"isCorrectOption\": false\n" \
+             "    },\n" \
+             "    \"C\": {\n" \
+             "      \"value\": \"Article 1\",\n" \
+             "      \"explanation\": null,\n" \
+             "      \"isCorrectOption\": false\n" \
+             "    },\n" \
+             "    \"D\": {\n" \
+             "      \"value\": \"Article 15\",\n" \
+             "      \"explanation\": null,\n" \
+             "      \"isCorrectOption\": false\n" \
+             "    }\n" \
+             "  }\n" \
+             " \"correctAnswer\": \ here comes the correct option, also make sure there is one correct answer} \,\n" \
+             "}"
+    else:
+        prompt = f"{conversation}\n\nPlease generate a descriptive question in the following format with markdown, just follow the format dont generate the same question, generate a sql query based question.\n\n" \
+             "{\n  \"question\": \"here will be a sql topic question you will generate\",\n" \
+              "}"
+        
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[{'role': 'system', 'content': 'You are an assistant.'},
                   {'role': 'user', 'content': prompt}]
     )
-    
+    # print(response.choices[0].message.content)
     return response.choices[0].message.content
 
 @app.route('/api/send_message', methods=['POST'])
@@ -221,14 +252,25 @@ def generate_question_endpoint():
 
     try:
         question = generate_question(conversation, question_type)
+        print(question)
 
         return jsonify({
             'question': question,
-            'type': question_type
         })
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+def evaluate_answer(question, selected_answer):
+    prompt = f"Question: {question}\nSelected Answer: {selected_answer}\n\nIs the selected answer correct? Provide a detailed explanation."
+
+    response = client.chat.completions.create(
+        model="gpt-4",
+        prompt=prompt,
+        max_tokens=150
+    )
+
+    return response.choices[0].message.content.strip()
 
 @app.route('/api/chat_history', methods=['GET'])
 def get_chat_history():
@@ -333,6 +375,23 @@ def evaluate_answer():
     # score = response.choices[0].text.strip()
 
     # return jsonify({'score': score})
+@app.route('/api/create_workspace', methods=['POST'])
+def create_workspace():
+    data = request.get_json()
+    workspace_name = data.get('name')
+    if not workspace_name:
+        return jsonify({'error': 'Workspace name is required'}), 400
+    
+    new_workspace = ChatWorkspace(name=workspace_name)
+    db.session.add(new_workspace)
+    db.session.commit()
+    
+    return jsonify({'id': new_workspace.id, 'name': new_workspace.name, 'created_at': new_workspace.created_at}), 201
+
+@app.route('/api/get_workspaces', methods=['GET'])
+def get_workspaces():
+    workspaces = ChatWorkspace.query.all()
+    return jsonify([{'id': ws.id, 'name': ws.name, 'created_at': ws.created_at} for ws in workspaces]), 200
 
 if __name__ == '__main__':
     app.run(debug=True)

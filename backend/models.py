@@ -63,3 +63,9 @@ class WorkspaceDetails(db.Model):
 # Define relationships
 User.workspaces = db.relationship('Workspace', backref='user', lazy=True)
 Workspace.details = db.relationship('WorkspaceDetails', backref='workspace', lazy=True)
+
+class ChatWorkspace(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
+
