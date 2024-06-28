@@ -67,5 +67,12 @@ Workspace.details = db.relationship('WorkspaceDetails', backref='workspace', laz
 class ChatWorkspace(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
+
+class ChatHistory(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    workspace_id = db.Column(db.Integer, db.ForeignKey('workspace.id'), nullable=False)
+    sender = db.Column(db.String(10), nullable=False)
+    text = db.Column(db.Text, nullable=False)
+    type = db.Column(db.String(20), nullable=True)
+
 

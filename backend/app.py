@@ -5,7 +5,7 @@ from flask_login import LoginManager, login_user, current_user, logout_user, log
 import sqlite3
 import json
 import requests
-from models import db, bcrypt, login_manager, User, Answer, Workspace, WorkspaceDetails, ChatWorkspace
+from models import db, bcrypt, login_manager, User, Answer, Workspace, WorkspaceDetails, ChatWorkspace, ChatHistory
 from assess import create_system_prompt, assess_query
 import openai
 from localStoragePy import localStoragePy
@@ -377,21 +377,23 @@ def evaluate_answer():
     # return jsonify({'score': score})
 @app.route('/api/create_workspace', methods=['POST'])
 def create_workspace():
-    data = request.get_json()
-    workspace_name = data.get('name')
-    if not workspace_name:
-        return jsonify({'error': 'Workspace name is required'}), 400
-    
-    new_workspace = ChatWorkspace(name=workspace_name)
+    data = request.json
+    new_workspace = ChatWorkspace(name=data['name'])
     db.session.add(new_workspace)
     db.session.commit()
-    
-    return jsonify({'id': new_workspace.id, 'name': new_workspace.name, 'created_at': new_workspace.created_at}), 201
+    return jsonify({"id": new_workspace.id, "name": new_workspace.name})
 
 @app.route('/api/get_workspaces', methods=['GET'])
 def get_workspaces():
-    workspaces = ChatWorkspace.query.all()
-    return jsonify([{'id': ws.id, 'name': ws.name, 'created_at': ws.created_at} for ws in workspaces]), 200
+    workspaces =ChatWorkspace.query.all()
+    return jsonify([{"id": ws.id, "name": ws.name} for ws in workspaces])
+
+@app.route('/api/chat_history', methods=['GET'])
+def chat_history():
+    workspace_id = request.args.get('workspace')
+    history = ChatHistory.query.filter_by(workspace_id=workspace_id).all()
+    return jsonify({"history": [{"sender": h.sender, "text": h.text, "type": h.type} for h in history]})
+
 
 if __name__ == '__main__':
     app.run(debug=True)
